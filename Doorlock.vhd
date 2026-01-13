@@ -50,12 +50,8 @@ architecture Behavioral of Doorlock is
     signal display_state : std_logic := '0'; --state lagi munculin angka atau benar/salah
     
     -- 5 second timer (adjust for your clock)
-    signal unlock_timer    : unsigned(27 downto 0) := (others => '0');
+    signal unlock_timer    : INTEGER range 0 to 500_000_000 := 0;
     signal timer_active    : std_logic := '0';
-    
-    -- CHANGE THIS BASED ON YOUR CLOCK
-    -- Example: 100 MHz clock → 5 seconds = 500,000,000 cycles
-    constant UNLOCK_TIME : unsigned(27 downto 0) := to_unsigned(500_000_000, 28);
 
 begin
 
@@ -64,7 +60,7 @@ begin
     process(clk, reset)
     begin
         if reset = '1' then
-            unlock_timer <= (others => '0');
+            unlock_timer <= 0;
             pw_reg   <= (others => '0');
             input_pw <= (others => '0');
             timer_active <= '0';
@@ -75,10 +71,10 @@ begin
         elsif rising_edge(clk) then
             -- UNLOCK TIMER
             if timer_active = '1' then
-                if unlock_timer >= UNLOCK_TIME then
+                if unlock_timer = 500_000_000 - 1 then
                     led_ok  <= '0';
                     timer_active <= '0';
-                    unlock_timer <= (others => '0');
+                    unlock_timer <= 0;
                 else
                     unlock_timer <= unlock_timer + 1;
                 end if;
@@ -90,7 +86,7 @@ begin
                 seg_mode <= '1';
                 correction <= '1';
                 timer_active <= '1';
-                unlock_timer <= (others => '0');
+                unlock_timer <= 0;
             end if;
             
             -- PASSWORD INPUT
@@ -115,7 +111,7 @@ begin
                             seg_mode <= '1';
                             correction <= '1';
                             timer_active <= '1';
-                            unlock_timer <= (others => '0');
+                            unlock_timer <= 0;
                             
                         else
                             led_ok <= '0';
