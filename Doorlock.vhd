@@ -48,27 +48,52 @@ architecture Behavioral of Doorlock is
     signal seg_mode   : std_logic := '0';
     signal correction : std_logic := '0';
     signal display_state : std_logic := '0'; --state lagi munculin angka atau benar/salah
+    
+    -- 5 second timer (adjust for your clock)
+    signal unlock_timer    : unsigned(27 downto 0) := (others => '0');
+    signal timer_active    : std_logic := '0';
+    
+    -- CHANGE THIS BASED ON YOUR CLOCK
+    -- Example: 100 MHz clock → 5 seconds = 500,000,000 cycles
+    constant UNLOCK_TIME : unsigned(27 downto 0) := to_unsigned(500_000_000, 28);
 
 begin
 
     display_data <= pw_reg when mode = '1' else input_pw;
 
-    process(clk, reset, unlock_button)
+    process(clk, reset)
     begin
         if reset = '1' then
+            unlock_timer <= (others => '0');
             pw_reg   <= (others => '0');
             input_pw <= (others => '0');
+            timer_active <= '0';
             count    <= 0;
             led_ok   <= '0';
             enable_reg <= '0';
         
-         elsif unlock_button = '1' then
-          led_ok <= '1';
-          seg_mode <= '1';
-          correction <= '1';
-
-        
         elsif rising_edge(clk) then
+            -- UNLOCK TIMER
+            if timer_active = '1' then
+                if unlock_timer >= UNLOCK_TIME then
+                    led_ok  <= '0';
+                    timer_active <= '0';
+                    unlock_timer <= (others => '0');
+                else
+                    unlock_timer <= unlock_timer + 1;
+                end if;
+            end if;
+            
+            -- UNLOCK FROM INSIDE
+            if unlock_button = '1' then
+                led_ok <= '1';
+                seg_mode <= '1';
+                correction <= '1';
+                timer_active <= '1';
+                unlock_timer <= (others => '0');
+            end if;
+            
+            -- PASSWORD INPUT
             if enable = '1' and enable_reg = '0' then
                 if mode = '1' then
                     if count < 8 then
@@ -78,7 +103,6 @@ begin
                     else
                         count <= 0;
                     end if;
-                    
                     
                 else
                     if count < 8 then
@@ -90,6 +114,8 @@ begin
                             led_ok <= '1';
                             seg_mode <= '1';
                             correction <= '1';
+                            timer_active <= '1';
+                            unlock_timer <= (others => '0');
                             
                         else
                             led_ok <= '0';
@@ -102,7 +128,6 @@ begin
             end if;
             enable_reg <= enable;
         end if;
-            
     end process;
 
     led_set   <= mode;
@@ -145,10 +170,6 @@ begin
         end if;
     end process;
 
-
-    
-  
-
     process(mux_count, digit_0, digit_1, digit_2, digit_3, digit_4, digit_5, digit_6, digit_7)
     begin
         case mux_count is
@@ -164,16 +185,16 @@ begin
             when 3 =>
                 current_digit <= digit_3; 
                 an <= "11101111";     
-	when 4 =>
+            when 4 =>
                 current_digit <= digit_4; 
                 an <= "11110111";       
-	when 5 =>
+            when 5 =>
                 current_digit <= digit_5; 
                 an <= "11111011";       
-	when 6 =>
+            when 6 =>
                 current_digit <= digit_6; 
                 an <= "11111101";       
-	when 7 =>
+            when 7 =>
                 current_digit <= digit_7; 
                 an <= "11111110";              
             when others =>
@@ -199,7 +220,6 @@ begin
             when others => seg_temp <= "11111111"; 
         end case;
     end process;
-    
     seg <= seg_temp;
 
 end Behavioral;
