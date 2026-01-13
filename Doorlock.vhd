@@ -22,21 +22,14 @@ end Doorlock;
 
 architecture Behavioral of Doorlock is
 
+    -- main code
     signal pw_reg     : STD_LOGIC_VECTOR (31 downto 0) := (others => '0');
     signal input_pw   : STD_LOGIC_VECTOR (31 downto 0) := (others => '0');
     signal display_data : STD_LOGIC_VECTOR (31 downto 0);
     signal count      : INTEGER range 0 to 8 := 0;
     signal enable_reg : std_logic := '0';
     
-    signal digit_0    : STD_LOGIC_VECTOR(3 downto 0);
-    signal digit_1    : STD_LOGIC_VECTOR(3 downto 0);
-    signal digit_2    : STD_LOGIC_VECTOR(3 downto 0);
-    signal digit_3    : STD_LOGIC_VECTOR(3 downto 0);
-
-    signal digit_4    : STD_LOGIC_VECTOR(3 downto 0);
-    signal digit_5    : STD_LOGIC_VECTOR(3 downto 0);
-    signal digit_6    : STD_LOGIC_VECTOR(3 downto 0);
-    signal digit_7    : STD_LOGIC_VECTOR(3 downto 0);
+    signal digit_0, digit_1, digit_2, digit_3, digit_4, digit_5, digit_6, digit_7 : STD_LOGIC_VECTOR(3 downto 0);
     
     signal refresh_count : unsigned(16 downto 0) := (others => '0');
     signal mux_count     : INTEGER range 0 to 7 := 0;
@@ -44,21 +37,22 @@ architecture Behavioral of Doorlock is
     signal current_digit : STD_LOGIC_VECTOR(3 downto 0);
     signal seg_temp      : STD_LOGIC_VECTOR(7 downto 0);
 
-    
+    -- 7 segment
     signal seg_mode   : std_logic := '0';
     signal correction : std_logic := '0';
     signal display_state : std_logic := '0'; --state lagi munculin angka atau benar/salah
     
-    -- 5 second timer (adjust for your clock)
+    -- 5 second timer
     signal unlock_timer    : INTEGER range 0 to 500_000_000 := 0;
     signal timer_active    : std_logic := '0';
 
 begin
 
-    display_data <= pw_reg when mode = '1' else input_pw;
-
+    -- main code
     process(clk, reset)
     begin
+        
+        -- reset button pressed
         if reset = '1' then
             unlock_timer <= 0;
             pw_reg   <= (others => '0');
@@ -67,20 +61,22 @@ begin
             count    <= 0;
             led_ok   <= '0';
             enable_reg <= '0';
+            seg_mode <= '0';
         
         elsif rising_edge(clk) then
-            -- UNLOCK TIMER
+            -- 5 second timer
             if timer_active = '1' then
                 if unlock_timer = 500_000_000 - 1 then
                     led_ok  <= '0';
                     timer_active <= '0';
                     unlock_timer <= 0;
+                    seg_mode <= '0';
                 else
                     unlock_timer <= unlock_timer + 1;
                 end if;
             end if;
             
-            -- UNLOCK FROM INSIDE
+            -- unlock from inside button
             if unlock_button = '1' then
                 led_ok <= '1';
                 seg_mode <= '1';
@@ -89,8 +85,10 @@ begin
                 unlock_timer <= 0;
             end if;
             
-            -- PASSWORD INPUT
+            -- password input
             if enable = '1' and enable_reg = '0' then
+            
+                -- set password 
                 if mode = '1' then
                     if count < 8 then
                         seg_mode <= '0';
@@ -99,7 +97,8 @@ begin
                     else
                         count <= 0;
                     end if;
-                    
+                
+                -- check password
                 else
                     if count < 8 then
                         seg_mode <= '0';
@@ -112,17 +111,39 @@ begin
                             correction <= '1';
                             timer_active <= '1';
                             unlock_timer <= 0;
-                            
                         else
                             led_ok <= '0';
                             seg_mode <= '1';
                             correction <= '0';
+                            timer_active <= '1';
                         end if;
                         count <= 0;
                     end if;
                 end if;
             end if;
             enable_reg <= enable;
+        end if;
+    end process;
+    
+    -- 7 segment display mode
+    process(seg_mode, correction, pw_reg, input_pw, mode)
+    begin
+        if seg_mode = '0' then
+            -- display number
+            if mode = '1' then
+                display_data <= pw_reg;
+            else
+                display_data <= input_pw;
+            end if;
+        else
+            -- display message
+            if correction = '1' then
+                -- b E n A r
+                display_data <= x"000EDCBA";
+            else
+                -- S A L A H
+                display_data <= x"000FD1D5";
+            end if;
         end if;
     end process;
 
@@ -147,7 +168,8 @@ begin
     digit_6 <= display_data(27 downto 24);    
     digit_7 <= display_data(31 downto 28);  
     
-    -- 7 SEGMENT SECTION
+    -- 7 segment main code
+    -- refresh count set to 1ms
     process(clk)
     begin
         if rising_edge(clk) then
@@ -165,7 +187,8 @@ begin
             end if;
         end if;
     end process;
-
+    
+    -- pick which digit selected
     process(mux_count, digit_0, digit_1, digit_2, digit_3, digit_4, digit_5, digit_6, digit_7)
     begin
         case mux_count is
@@ -198,10 +221,12 @@ begin
                 an <= "11111111";             
         end case;
     end process;
-
+    
+    -- decoder 4-bit 0-F
     process (current_digit)
     begin
         case current_digit is
+            -- number decode 0-9
             when "0000" => seg_temp <= "11000000"; 
             when "0001" => seg_temp <= "11111001"; 
             when "0010" => seg_temp <= "10100100"; 
@@ -212,6 +237,14 @@ begin
             when "0111" => seg_temp <= "11111000"; 
             when "1000" => seg_temp <= "10000000"; 
             when "1001" => seg_temp <= "10010000";
+            
+            -- alphabet decode A-F (changed for benar salah)
+            when "1010" => seg_temp <= "10000011"; -- b
+            when "1011" => seg_temp <= "10000110"; -- E
+            when "1100" => seg_temp <= "10101011"; -- n
+            when "1101" => seg_temp <= "10001000"; -- A
+            when "1110" => seg_temp <= "10101111"; -- r
+            when "1111" => seg_temp <= "10001001"; -- H
             
             when others => seg_temp <= "11111111"; 
         end case;
