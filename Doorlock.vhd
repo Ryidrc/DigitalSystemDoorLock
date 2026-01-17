@@ -124,50 +124,7 @@ begin
             enable_reg <= enable;
         end if;
     end process;
-    
-    -- 7 segment display mode
-    process(seg_mode, correction, pw_reg, input_pw, mode)
-    begin
-        if seg_mode = '0' then
-            -- display number
-            if mode = '1' then
-                display_data <= pw_reg;
-            else
-                display_data <= input_pw;
-            end if;
-        else
-            -- display message
-            if correction = '1' then
-                -- b E n A r
-                display_data <= x"000EDCBA";
-            else
-                -- S A L A H
-                display_data <= x"000FD1D5";
-            end if;
-        end if;
-    end process;
 
-    led_set   <= mode;
-    led_input <= not mode;
-
-    pw1 <= '1' when count = 1 else '0';
-    pw2 <= '1' when count = 2 else '0';
-    pw3 <= '1' when count = 3 else '0';
-    pw4 <= '1' when count = 4 else '0';
-    pw5 <= '1' when count = 5 else '0';
-    pw6 <= '1' when count = 6 else '0';
-    pw7 <= '1' when count = 7 else '0';
-    pw8 <= '1' when count = 8 else '0';
-
-    digit_0 <= display_data(3 downto 0);     
-    digit_1 <= display_data(7 downto 4);      
-    digit_2 <= display_data(11 downto 8);    
-    digit_3 <= display_data(15 downto 12);  
-    digit_4 <= display_data(19 downto 16);     
-    digit_5 <= display_data(23 downto 20);      
-    digit_6 <= display_data(27 downto 24);    
-    digit_7 <= display_data(31 downto 28);  
-    
     -- 7 segment main code
     -- refresh count set to 1ms
     process(clk)
@@ -249,6 +206,50 @@ begin
             when others => seg_temp <= "11111111"; 
         end case;
     end process;
+    
+    -- 7 segment display mode
+    process(seg_mode, correction, pw_reg, input_pw, mode)
+    begin
+        if seg_mode = '0' then
+            -- display number
+            if mode = '1' then
+                display_data <= pw_reg;
+            else
+                display_data <= input_pw;
+            end if;
+        else
+            -- display message
+            if correction = '1' then
+                -- b E n A r
+                display_data <= x"000EDCBA";
+            else
+                -- S A L A H
+                display_data <= x"000FD1D5";
+            end if;
+        end if;
+    end process;
+
+    led_set   <= mode;
+    led_input <= not mode;
+
+    pw1 <= '1' when count = 1 else '0';
+    pw2 <= '1' when count = 2 else '0';
+    pw3 <= '1' when count = 3 else '0';
+    pw4 <= '1' when count = 4 else '0';
+    pw5 <= '1' when count = 5 else '0';
+    pw6 <= '1' when count = 6 else '0';
+    pw7 <= '1' when count = 7 else '0';
+    pw8 <= '1' when count = 8 else '0';
+
+    digit_0 <= display_data(3 downto 0);     
+    digit_1 <= display_data(7 downto 4);      
+    digit_2 <= display_data(11 downto 8);    
+    digit_3 <= display_data(15 downto 12);  
+    digit_4 <= display_data(19 downto 16);     
+    digit_5 <= display_data(23 downto 20);      
+    digit_6 <= display_data(27 downto 24);    
+    digit_7 <= display_data(31 downto 28);  
+    
     seg <= seg_temp;
 
 end Behavioral;
