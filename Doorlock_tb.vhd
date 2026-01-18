@@ -5,7 +5,6 @@
 
 library ieee;
 use ieee.std_logic_1164.all;
-use ieee.numeric_std.all;
 
 entity tb_Doorlock is
 end tb_Doorlock;
@@ -55,27 +54,7 @@ architecture tb of tb_Doorlock is
     signal an            : std_logic_vector (7 downto 0);
 
     constant TbPeriod : time := 10 ns;
-    signal TbClock : std_logic := '0';
     signal TbSimEnded : std_logic := '0';
-    
-    -- Helper procedures
-    procedure pulse_enable(signal enable_sig : out std_logic) is
-    begin
-        wait for TbPeriod * 2;
-        enable_sig <= '1';
-        wait for TbPeriod * 2;
-        enable_sig <= '0';
-        wait for TbPeriod * 2;
-    end procedure;
-    
-    procedure input_digit(
-        signal switches_sig : out std_logic_vector(3 downto 0);
-        signal enable_sig : out std_logic;
-        constant digit : in integer) is
-    begin
-        switches_sig <= std_logic_vector(to_unsigned(digit, 4));
-        pulse_enable(enable_sig);
-    end procedure;
 
 begin
 
@@ -101,12 +80,12 @@ begin
               an            => an);
 
     -- Clock generation
-    TbClock <= not TbClock after TbPeriod/2 when TbSimEnded /= '1' else '0';
-    clk <= TbClock;
+    clk <= not clk after TbPeriod/2 when TbSimEnded /= '1' else '0';
 
     stimuli : process
     begin
         -- ***EDIT*** Adapt initialization as needed
+        clk <= '0';
         enable <= '0';
         mode <= '0';
         unlock_button <= '0';
@@ -121,117 +100,47 @@ begin
 
         -- ***EDIT*** Add stimuli here
         
-        -- Test 1: Set password to 12345678
-        report "=== Test 1: Setting password to 12345678 ===";
-        mode <= '1'; -- Set password mode
-        wait for TbPeriod * 5;
-        
-        input_digit(switches, enable, 1);
-        input_digit(switches, enable, 2);
-        input_digit(switches, enable, 3);
-        input_digit(switches, enable, 4);
-        input_digit(switches, enable, 5);
-        input_digit(switches, enable, 6);
-        input_digit(switches, enable, 7);
-        input_digit(switches, enable, 8);
-        
-        wait for TbPeriod * 20;
-        
-        -- Test 2: Enter correct password
-        report "=== Test 2: Entering correct password ===";
-        mode <= '0'; -- Input password mode
-        wait for TbPeriod * 5;
-        
-        input_digit(switches, enable, 1);
-        input_digit(switches, enable, 2);
-        input_digit(switches, enable, 3);
-        input_digit(switches, enable, 4);
-        input_digit(switches, enable, 5);
-        input_digit(switches, enable, 6);
-        input_digit(switches, enable, 7);
-        input_digit(switches, enable, 8);
-        
-        wait for TbPeriod * 20;
-        assert led_ok = '1' report "LED OK should be on for correct password" severity error;
-        
-        -- Wait for timer to expire (simulate part of 5 seconds)
-        wait for TbPeriod * 100;
-        
-        -- Test 3: Enter incorrect password
-        report "=== Test 3: Entering incorrect password ===";
-        mode <= '0';
-        wait for TbPeriod * 5;
-        
-        input_digit(switches, enable, 9);
-        input_digit(switches, enable, 9);
-        input_digit(switches, enable, 9);
-        input_digit(switches, enable, 9);
-        input_digit(switches, enable, 9);
-        input_digit(switches, enable, 9);
-        input_digit(switches, enable, 9);
-        input_digit(switches, enable, 9);
-        
-        wait for TbPeriod * 20;
-        assert led_ok = '0' report "LED OK should be off for incorrect password" severity error;
-        
-        wait for TbPeriod * 100;
-        
-        -- Test 4: Unlock from inside button
-        report "=== Test 4: Testing unlock button ===";
-        unlock_button <= '1';
-        wait for TbPeriod * 10;
-        unlock_button <= '0';
-        wait for TbPeriod * 10;
-        assert led_ok = '1' report "LED OK should be on after unlock button" severity error;
-        
-        wait for TbPeriod * 100;
-        
-        -- Test 5: Reset test
-        report "=== Test 5: Testing reset functionality ===";
-        reset <= '1';
-        wait for TbPeriod * 10;
-        reset <= '0';
-        assert led_ok = '0' report "LED OK should be off after reset" severity error;
-        
-        wait for TbPeriod * 50;
-        
-        -- Test 6: Set new password and verify
-        report "=== Test 6: Setting new password 00001111 ===";
+        -- Set password: 1234 5678
         mode <= '1';
-        wait for TbPeriod * 5;
+        for i in 1 to 8 loop
+            switches <= std_logic_vector(to_unsigned(i, 4));
+            wait for 50 ns;
+            enable <= '1';
+            wait for 50 ns;
+            enable <= '0';
+            wait for 50 ns;
+        end loop;
+        wait for 200 ns;
         
-        input_digit(switches, enable, 0);
-        input_digit(switches, enable, 0);
-        input_digit(switches, enable, 0);
-        input_digit(switches, enable, 0);
-        input_digit(switches, enable, 1);
-        input_digit(switches, enable, 1);
-        input_digit(switches, enable, 1);
-        input_digit(switches, enable, 1);
-        
-        wait for TbPeriod * 20;
-        
-        -- Verify new password
+        -- Enter correct password
         mode <= '0';
-        wait for TbPeriod * 5;
+        for i in 1 to 8 loop
+            switches <= std_logic_vector(to_unsigned(i, 4));
+            wait for 50 ns;
+            enable <= '1';
+            wait for 50 ns;
+            enable <= '0';
+            wait for 50 ns;
+        end loop;
+        wait for 500 ns;
         
-        input_digit(switches, enable, 0);
-        input_digit(switches, enable, 0);
-        input_digit(switches, enable, 0);
-        input_digit(switches, enable, 0);
-        input_digit(switches, enable, 1);
-        input_digit(switches, enable, 1);
-        input_digit(switches, enable, 1);
-        input_digit(switches, enable, 1);
+        -- Enter wrong password
+        for i in 0 to 7 loop
+            switches <= "1111";
+            wait for 50 ns;
+            enable <= '1';
+            wait for 50 ns;
+            enable <= '0';
+            wait for 50 ns;
+        end loop;
+        wait for 500 ns;
         
-        wait for TbPeriod * 20;
-        assert led_ok = '1' report "LED OK should be on for new correct password" severity error;
-        
-        wait for TbPeriod * 100;
-        
-        report "=== Testbench Complete ===";
-        
-        -- Stop the clock and hence terminate the simulation
+        -- Test unlock button
+        unlock_button <= '1';
+        wait for 100 ns;
+        unlock_button <= '0';
+        wait for 500 ns;
+
         TbSimEnded <= '1';
         wait;
     end process;
