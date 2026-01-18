@@ -6,10 +6,10 @@
 library ieee;
 use ieee.std_logic_1164.all;
 
-entity tb_Doorlock is
-end tb_Doorlock;
+entity Doorlock_tb is
+end Doorlock_tb;
 
-architecture tb of tb_Doorlock is
+architecture tb of Doorlock_tb is
 
     component Doorlock
         port (clk           : in std_logic;
@@ -149,7 +149,7 @@ end tb;
 
 -- Configuration block below is required by some simulators. Usually no need to edit.
 
-configuration cfg_tb_Doorlock of tb_Doorlock is
+configuration cfg_Doorlock_tb of Doorlock_tb is
     for tb
     end for;
-end cfg_tb_Doorlock;
+end cfg_Doorlock_tb;
